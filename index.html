@@ -1,218 +1,37 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>麻將紀錄系統</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>麻將日曆紀錄</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background: #fff7f9; }
-  </style>
 </head>
 
-<body class="p-4">
+<body class="bg-pink-50 p-4">
 
-<h1 class="text-2xl font-bold mb-4">🀄 麻將紀錄（雲端同步）</h1>
+<h1 class="text-2xl font-bold mb-4">🀄 麻將紀錄（日曆）</h1>
 
-<!-- 玩家選擇 -->
-<div class="mb-4">
-  <label class="block font-bold mb-1">目前玩家</label>
-  <select id="playerSelect" class="border px-2 py-1 rounded"></select>
-</div>
-
-<!-- 新增玩家 -->
+<!-- 分頁按鈕 -->
 <div class="mb-4 flex gap-2">
-  <input id="newPlayerName" class="border px-2 py-1 rounded" placeholder="新增人名">
-  <button onclick="addPlayer()" class="bg-pink-300 px-3 py-1 rounded">新增</button>
+  <button onclick="showPage('calendar')" class="bg-pink-300 px-3 py-1 rounded">
+    📅 日曆
+  </button>
+  <button onclick="showPage('manage')" class="bg-gray-200 px-3 py-1 rounded">
+    📊 統計 / 人員
+  </button>
 </div>
 
-<!-- 刪除玩家 -->
-<div class="mb-4 flex gap-2">
-  <select id="deletePlayerSelect" class="border px-2 py-1 rounded"></select>
-  <button onclick="deletePlayer()" class="bg-red-300 px-3 py-1 rounded">刪除成員</button>
-</div>
+<!-- ================= 日曆首頁 ================= -->
+<div id="calendarPage">
 
-<!-- 新增紀錄 -->
-<div class="mb-6 flex gap-2">
-  <input id="amountInput" type="number" class="border px-2 py-1 rounded" placeholder="金額">
-  <button onclick="saveRecord()" class="bg-green-300 px-3 py-1 rounded">記錄今天</button>
-</div>
+  <!-- 玩家選擇 + 記帳 -->
+  <div class="mb-4 flex flex-wrap gap-2 items-center">
+    <select id="playerSelect" class="border px-2 py-1 rounded"></select>
+    <input id="amountInput" type="number" class="border px-2 py-1 rounded" placeholder="金額">
+    <button onclick="saveRecord()" class="bg-green-300 px-3 py-1 rounded">
+      記錄今天
+    </button>
+  </div>
 
-<!-- 統計 -->
-<div class="mb-6 p-3 bg-white rounded shadow">
-  <h2 class="font-bold mb-2">📊 統計</h2>
-  <div id="statsContainer" class="space-y-1 text-sm"></div>
-</div>
-
-<!-- 紀錄列表 -->
-<div class="p-3 bg-white rounded shadow">
-  <h2 class="font-bold mb-2">📅 紀錄</h2>
-  <div id="calendar"></div>
-</div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-<script>
-/* ================= Firebase ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyBByyCj9jUyTpV96GQUUcOhJk81tNsxNt8",
-  authDomain: "mahjong-calendar-2870.firebaseapp.com",
-  projectId: "mahjong-calendar-2870",
-  storageBucket: "mahjong-calendar-2870.firebasestorage.app",
-  messagingSenderId: "169815645370",
-  appId: "1:169815645370:web:052e7e239460a4d05ab683"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-/* ================= 資料 ================= */
-let players = ["仙女"];
-let records = {};
-let currentPlayer = "";
-
-/* ================= 雲端 ================= */
-async function loadData() {
-  const doc = await db.collection("mahjong").doc("shared").get();
-  if (doc.exists) {
-    const data = doc.data();
-    players = data.players || players;
-    records = data.records || {};
-  }
-}
-
-function saveToCloud() {
-  db.collection("mahjong").doc("shared").set({ players, records });
-}
-
-function listenCloudChanges() {
-  db.collection("mahjong").doc("shared").onSnapshot(doc => {
-    if (doc.exists) {
-      const data = doc.data();
-      players = data.players || players;
-      records = data.records || {};
-      renderAll();
-    }
-  });
-}
-
-/* ================= 玩家 ================= */
-function renderPlayerSelector() {
-  const select = document.getElementById("playerSelect");
-  const del = document.getElementById("deletePlayerSelect");
-  select.innerHTML = "";
-  del.innerHTML = "";
-
-  players.forEach(p => {
-    select.add(new Option(p, p));
-    del.add(new Option(p, p));
-  });
-
-  if (!currentPlayer && players.length) {
-    currentPlayer = players[0];
-  }
-  select.value = currentPlayer;
-  select.onchange = e => currentPlayer = e.target.value;
-}
-
-function addPlayer() {
-  const input = document.getElementById("newPlayerName");
-  const name = input.value.trim();
-  if (!name || players.includes(name)) return;
-  players.push(name);
-  input.value = "";
-  saveToCloud();
-}
-
-function deletePlayer() {
-  const name = document.getElementById("deletePlayerSelect").value;
-  if (!confirm(`確定刪除 ${name}？`)) return;
-
-  players = players.filter(p => p !== name);
-  Object.keys(records).forEach(d => {
-    delete records[d][name];
-    if (Object.keys(records[d]).length === 0) delete records[d];
-  });
-
-  if (currentPlayer === name) currentPlayer = players[0] || "";
-  saveToCloud();
-}
-
-/* ================= 紀錄 ================= */
-function saveRecord() {
-  const amount = Number(document.getElementById("amountInput").value);
-  if (!currentPlayer || isNaN(amount)) return;
-
-  const today = new Date().toISOString().slice(0, 10);
-  if (!records[today]) records[today] = {};
-  records[today][currentPlayer] = amount;
-
-  document.getElementById("amountInput").value = "";
-  saveToCloud();
-}
-
-function renderCalendar() {
-  const div = document.getElementById("calendar");
-  div.innerHTML = "";
-
-  Object.keys(records).sort().reverse().forEach(date => {
-    const d = document.createElement("div");
-    d.className = "border-b py-1";
-    d.textContent = date + "：" +
-      Object.entries(records[date]).map(([p, v]) => `${p} ${v}`).join("，");
-    div.appendChild(d);
-  });
-}
-
-/* ================= 統計 ================= */
-function calculatePlayDays() {
-  const days = {};
-  players.forEach(p => days[p] = 0);
-
-  Object.values(records).forEach(day => {
-    players.forEach(p => {
-      if (day[p] !== undefined) days[p]++;
-    });
-  });
-  return days;
-}
-
-function renderStats() {
-  const c = document.getElementById("statsContainer");
-  c.innerHTML = "";
-
-  const days = calculatePlayDays();
-
-  players.forEach(p => {
-    let total = 0;
-    Object.values(records).forEach(day => {
-      if (day[p] !== undefined) total += Number(day[p]);
-    });
-
-    const div = document.createElement("div");
-    div.textContent = `${p}｜總輸贏 ${total}｜來打 ${days[p]} 天`;
-    c.appendChild(div);
-  });
-}
-
-/* ================= 初始化 ================= */
-function renderAll() {
-  renderPlayerSelector();
-  renderCalendar();
-  renderStats();
-}
-
-async function init() {
-  await loadData();
-  renderAll();
-  listenCloudChanges();
-}
-
-init();
-</script>
-
-</body>
-</html>
+  <!-- 日曆紀錄 -->
