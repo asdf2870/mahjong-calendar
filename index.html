@@ -315,27 +315,40 @@
     let tempRecord = {};
     let playerSigns = {};
 
-    // 嚴謹的初始化驗證邏輯
+    // 啟動身份驗證與逾時保護
     async function initAuth() {
         const statusEl = document.getElementById('connectionStatus');
+        statusEl.innerText = "🔑 正在驗證身份...";
+        
+        // 逾時計時器：如果 5 秒內 Auth 沒有響應，強制重試匿名登入
+        const authTimeout = setTimeout(() => {
+            if (!user) {
+                console.warn("Auth Timeout - Forcing Anonymous Sign In");
+                signInAnonymously(auth).catch(e => {
+                    statusEl.innerText = "⚠️ 連線受阻，請重新整理頁面";
+                });
+            }
+        }, 5000);
+
         try {
-            statusEl.innerText = "🔑 正在驗證身份...";
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                console.log("Using Custom Token");
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
+                console.log("Using Anonymous Sign In");
                 await signInAnonymously(auth);
             }
         } catch (error) {
             console.error("Auth Error:", error);
-            statusEl.innerText = "⚠️ 驗證失敗，嘗試重新連線...";
-            // 失敗後重試匿名登入
-            setTimeout(() => signInAnonymously(auth), 2000);
+            statusEl.innerText = "⚠️ 驗證重試中...";
+            setTimeout(() => signInAnonymously(auth), 1000);
         }
     }
 
     onAuthStateChanged(auth, (u) => {
         user = u;
         if (user) {
+            console.log("User Authenticated:", user.uid);
             document.getElementById('userIdDisplay').innerText = user.uid;
             document.getElementById('connectionStatus').innerText = "✅ 雲端同步中";
             startSync();
@@ -358,7 +371,7 @@
             renderCalendar();
         }, (err) => {
             console.error("Records Sync Error:", err);
-            document.getElementById('connectionStatus').innerText = "❌ 同步錯誤";
+            document.getElementById('connectionStatus').innerText = "❌ 同步錯誤 (權限或網路)";
         });
 
         // 監聽設定 (牌咖清單)
@@ -384,12 +397,16 @@
 
     function renderCalendar() {
         const calendar = document.getElementById('calendar');
+        if (!calendar) return;
         calendar.innerHTML = '';
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         document.getElementById('currentMonthLabel').innerText = `${currentYear}年 ${currentMonth + 1}月`;
 
-        for (let i = 0; i < firstDay; i++) calendar.innerHTML += '<div></div>';
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            calendar.appendChild(empty);
+        }
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
