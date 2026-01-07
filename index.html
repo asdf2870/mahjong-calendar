@@ -1,217 +1,392 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>麻將紀錄系統</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>仙女家麻將室 - 2026 紀錄</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ffb7c5;
+            --secondary: #fdf6e3;
+            --text: #5d4037;
+            --win: #ffccd5;
+            --loss: #e0e0e0;
+            --no-play: #fefae0;
+        }
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background: #fff7f9; }
-  </style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--secondary);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            background-image: radial-gradient(#ffb7c5 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+        }
+
+        .journal-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-family: 'ZCOOL+XiaoWei', serif;
+            font-size: 2.2rem;
+            color: #d81b60;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            background: white;
+            border: 1px solid #f0f0f0;
+            transition: transform 0.1s;
+        }
+
+        .calendar-day:active { transform: scale(0.95); }
+        .day-label { font-weight: bold; }
+        .day-val { font-size: 0.6rem; margin-top: 2px; font-weight: 600; }
+
+        .bg-win { background-color: var(--win) !important; border-color: #ff8fa3; color: #d81b60; }
+        .bg-loss { background-color: var(--loss) !important; border-color: #bdbdbd; color: #616161; }
+        .bg-no-play { background-color: var(--no-play) !important; border-color: #e9edc9; color: #827717; }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 30px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .player-chip {
+            padding: 6px 12px;
+            border: 1.5px solid var(--primary);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .player-chip.selected { background: var(--primary); color: white; }
+
+        .toggle-sign-btn {
+            width: 50px;
+            height: 30px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .sign-plus { background: #ffccd5; color: #d81b60; }
+        .sign-minus { background: #616161; color: white; }
+
+        .btn-circle {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
+        }
+    </style>
 </head>
+<body>
 
-<body class="p-4">
+<div class="journal-container">
+    <div class="header text-center mb-6">
+        <h1>仙女家麻將室</h1>
+        <p class="text-xs text-pink-400">2026 年度手帳紀錄</p>
+    </div>
 
-<h1 class="text-2xl font-bold mb-4">🀄 麻將紀錄（雲端同步）</h1>
+    <div class="bg-white rounded-3xl p-5 mb-6 shadow-sm border border-pink-50">
+        <div class="flex justify-between items-center mb-4">
+            <button id="prevMonth" class="p-2 text-pink-300">◀</button>
+            <h2 id="monthLabel" class="font-bold text-lg text-gray-700">2026年 1月</h2>
+            <button id="nextMonth" class="p-2 text-pink-300">▶</button>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-center">
+            <div class="bg-pink-50 rounded-2xl py-3">
+                <span class="text-[10px] text-gray-400 block">本月將數</span>
+                <span id="statGames" class="text-xl font-black text-pink-600">0</span>
+            </div>
+            <div class="bg-gray-50 rounded-2xl py-3">
+                <span class="text-[10px] text-gray-400 block">我的盈虧</span>
+                <span id="statProfit" class="text-xl font-black text-gray-600">0</span>
+            </div>
+        </div>
+    </div>
 
-<!-- 玩家選擇 -->
-<div class="mb-4">
-  <label class="block font-bold mb-1">目前玩家</label>
-  <select id="playerSelect" class="border px-2 py-1 rounded"></select>
+    <div id="calendar" class="calendar-grid mb-8"></div>
+
+    <div class="bg-white rounded-3xl p-5 shadow-sm border border-pink-50">
+        <h3 class="font-bold text-sm mb-4 flex items-center">
+            <span class="mr-2">🏆</span> 好友本月戰績
+        </h3>
+        <div id="friendList" class="space-y-2"></div>
+    </div>
 </div>
 
-<!-- 新增玩家 -->
-<div class="mb-4 flex gap-2">
-  <input id="newPlayerName" class="border px-2 py-1 rounded" placeholder="新增人名">
-  <button onclick="addPlayer()" class="bg-pink-300 px-3 py-1 rounded">新增</button>
-</div>
+<!-- 編輯彈窗 -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modalDate" class="text-center font-bold text-lg mb-6 text-pink-600"></h2>
+        
+        <div class="mb-6">
+            <label class="text-xs font-bold text-gray-400 mb-2 block">今日總將數</label>
+            <div class="flex items-center justify-between bg-gray-50 p-4 rounded-2xl">
+                <button onclick="changeGames(-1)" class="btn-circle">-</button>
+                <span id="editGames" class="text-2xl font-black">0</span>
+                <button onclick="changeGames(1)" class="btn-circle">+</button>
+            </div>
+        </div>
 
-<!-- 刪除玩家 -->
-<div class="mb-4 flex gap-2">
-  <select id="deletePlayerSelect" class="border px-2 py-1 rounded"></select>
-  <button onclick="deletePlayer()" class="bg-red-300 px-3 py-1 rounded">刪除成員</button>
-</div>
+        <div class="mb-6">
+            <label class="text-xs font-bold text-gray-400 mb-2 block">參與牌咖</label>
+            <div id="playerSelector" class="flex flex-wrap gap-2"></div>
+        </div>
 
-<!-- 新增紀錄 -->
-<div class="mb-6 flex gap-2">
-  <input id="amountInput" type="number" class="border px-2 py-1 rounded" placeholder="金額">
-  <button onclick="saveRecord()" class="bg-green-300 px-3 py-1 rounded">記錄今天</button>
-</div>
+        <div id="profitInputs" class="space-y-3 mb-6"></div>
 
-<!-- 統計 -->
-<div class="mb-6 p-3 bg-white rounded shadow">
-  <h2 class="font-bold mb-2">📊 統計</h2>
-  <div id="statsContainer" class="space-y-1 text-sm"></div>
-</div>
+        <div class="bg-pink-50 p-4 rounded-2xl text-sm mb-6">
+            <div class="flex justify-between mb-1">
+                <span class="text-gray-500">台費預計 (將×200):</span>
+                <span id="feeText">0</span>
+            </div>
+            <div class="flex justify-between font-bold">
+                <span>帳目平齊校驗:</span>
+                <span id="balanceText">0</span>
+            </div>
+        </div>
 
-<!-- 紀錄列表 -->
-<div class="p-3 bg-white rounded shadow">
-  <h2 class="font-bold mb-2">📅 紀錄</h2>
-  <div id="calendar"></div>
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="closeModal()" class="py-3 bg-gray-100 rounded-full font-bold text-gray-400">取消</button>
+            <button onclick="save()" class="py-3 bg-pink-500 text-white rounded-full font-bold">儲存</button>
+        </div>
+        <button onclick="del()" class="w-full mt-6 text-[10px] text-red-200">刪除此日紀錄</button>
+    </div>
 </div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-/* ================= Firebase ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyBByyCj9jUyTpV96GQUUcOhJk81tNsxNt8",
-  authDomain: "mahjong-calendar-2870.firebaseapp.com",
-  projectId: "mahjong-calendar-2870",
-  storageBucket: "mahjong-calendar-2870.firebasestorage.app",
-  messagingSenderId: "169815645370",
-  appId: "1:169815645370:web:052e7e239460a4d05ab683"
-};
+    const STORAGE_KEY = 'mahjong_2026_data';
+    const PLAYERS = ["我", "菜菜", "美琪", "柚柚", "亮亮", "Willy", "小比", "宗穎", "蘊蘊", "其他"];
+    
+    let state = {
+        viewYear: 2026,
+        viewMonth: new Date().getMonth(),
+        records: JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'),
+        editing: null // { date, games, profits: {}, players: [] }
+    };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+    function render() {
+        // 更新標題
+        document.getElementById('monthLabel').innerText = `${state.viewYear}年 ${state.viewMonth + 1}月`;
+        
+        // 渲染日曆
+        const container = document.getElementById('calendar');
+        container.innerHTML = '';
+        
+        const firstDay = new Date(state.viewYear, state.viewMonth, 1).getDay();
+        const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
+        
+        for (let i = 0; i < firstDay; i++) {
+            container.appendChild(document.createElement('div'));
+        }
+        
+        let mGames = 0, mProfit = 0, fStats = {};
+        PLAYERS.forEach(p => fStats[p] = 0);
 
-/* ================= 資料 ================= */
-let players = ["仙女"];
-let records = {};
-let currentPlayer = "";
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${state.viewYear}-${String(state.viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const rec = state.records[dateStr];
+            
+            const dayEl = document.createElement('div');
+            dayEl.className = 'calendar-day';
+            dayEl.innerHTML = `<span class="day-label">${d}</span>`;
+            
+            if (rec) {
+                mGames += (rec.games || 0);
+                const myP = rec.profits["我"] || 0;
+                if (rec.players.includes("我")) {
+                    mProfit += myP;
+                    dayEl.classList.add(myP > 0 ? 'bg-win' : (myP < 0 ? 'bg-loss' : 'bg-no-play'));
+                    dayEl.innerHTML += `<span class="day-val">${myP > 0 ? '+' + myP : myP}</span>`;
+                } else {
+                    dayEl.classList.add('bg-no-play');
+                    dayEl.innerHTML += `<span class="day-val">有局</span>`;
+                }
+                
+                Object.entries(rec.profits).forEach(([p, val]) => {
+                    fStats[p] = (fStats[p] || 0) + val;
+                });
+            }
+            
+            dayEl.onclick = () => openModal(dateStr);
+            container.appendChild(dayEl);
+        }
 
-/* ================= 雲端 ================= */
-async function loadData() {
-  const doc = await db.collection("mahjong").doc("shared").get();
-  if (doc.exists) {
-    const data = doc.data();
-    players = data.players || players;
-    records = data.records || {};
-  }
-}
+        // 更新統計
+        document.getElementById('statGames').innerText = mGames;
+        document.getElementById('statProfit').innerText = (mProfit > 0 ? '+' : '') + mProfit;
+        document.getElementById('statProfit').className = `text-xl font-black ${mProfit > 0 ? 'text-pink-600' : 'text-gray-500'}`;
 
-function saveToCloud() {
-  db.collection("mahjong").doc("shared").set({ players, records });
-}
-
-function listenCloudChanges() {
-  db.collection("mahjong").doc("shared").onSnapshot(doc => {
-    if (doc.exists) {
-      const data = doc.data();
-      players = data.players || players;
-      records = data.records || {};
-      renderAll();
+        // 渲染好友榜
+        const fList = document.getElementById('friendList');
+        fList.innerHTML = PLAYERS.filter(p => p !== "我")
+            .sort((a,b) => Math.abs(fStats[b]) - Math.abs(fStats[a]))
+            .map(p => `
+                <div class="flex justify-between text-xs py-1 border-b border-gray-50 last:border-0">
+                    <span class="text-gray-500">${p}</span>
+                    <span class="font-bold ${fStats[p]>0?'text-pink-500':(fStats[p]<0?'text-gray-400':'text-gray-200')}">
+                        ${fStats[p]>0?'+':''}${fStats[p]}
+                    </span>
+                </div>
+            `).join('');
     }
-  });
-}
 
-/* ================= 玩家 ================= */
-function renderPlayerSelector() {
-  const select = document.getElementById("playerSelect");
-  const del = document.getElementById("deletePlayerSelect");
-  select.innerHTML = "";
-  del.innerHTML = "";
+    function openModal(date) {
+        const existing = state.records[date] || { games: 0, players: [], profits: {} };
+        state.editing = { date, ...JSON.parse(JSON.stringify(existing)) };
+        
+        document.getElementById('modalDate').innerText = date;
+        document.getElementById('editGames').innerText = state.editing.games;
+        
+        // 渲染球員選擇
+        const sel = document.getElementById('playerSelector');
+        sel.innerHTML = PLAYERS.map(p => `
+            <div onclick="togglePlayer('${p}')" class="player-chip ${state.editing.players.includes(p)?'selected':''}">
+                ${p}
+            </div>
+        `).join('');
 
-  players.forEach(p => {
-    select.add(new Option(p, p));
-    del.add(new Option(p, p));
-  });
+        updateProfitInputs();
+        document.getElementById('modal').style.display = 'flex';
+    }
 
-  if (!currentPlayer && players.length) {
-    currentPlayer = players[0];
-  }
-  select.value = currentPlayer;
-  select.onchange = e => currentPlayer = e.target.value;
-}
+    function togglePlayer(p) {
+        const idx = state.editing.players.indexOf(p);
+        if (idx > -1) {
+            state.editing.players.splice(idx, 1);
+            delete state.editing.profits[p];
+        } else {
+            state.editing.players.push(p);
+            state.editing.profits[p] = 0;
+        }
+        openModal(state.editing.date); // 重新渲染彈窗
+    }
 
-function addPlayer() {
-  const input = document.getElementById("newPlayerName");
-  const name = input.value.trim();
-  if (!name || players.includes(name)) return;
-  players.push(name);
-  input.value = "";
-  saveToCloud();
-}
+    function updateProfitInputs() {
+        const container = document.getElementById('profitInputs');
+        container.innerHTML = state.editing.players.map(p => {
+            const val = state.editing.profits[p] || 0;
+            const isNeg = val < 0 || (val === 0 && (state.editing.lastSign && state.editing.lastSign[p] === -1));
+            
+            return `
+            <div class="flex items-center justify-between bg-white border border-gray-100 p-3 rounded-xl">
+                <span class="text-sm font-bold">${p}</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleSign('${p}')" class="toggle-sign-btn ${val < 0 ? 'sign-minus' : 'sign-plus'}">
+                        ${val < 0 ? '輸 -' : '贏 +'}
+                    </button>
+                    <input type="number" value="${Math.abs(val) || ''}" placeholder="0" 
+                        oninput="setVal('${p}', this.value)"
+                        class="w-16 text-center font-bold bg-transparent outline-none" inputmode="numeric">
+                </div>
+            </div>`;
+        }).join('');
+        calc();
+    }
 
-function deletePlayer() {
-  const name = document.getElementById("deletePlayerSelect").value;
-  if (!confirm(`確定刪除 ${name}？`)) return;
+    function toggleSign(p) {
+        state.editing.profits[p] = (state.editing.profits[p] || 0) * -1;
+        if (state.editing.profits[p] === 0) {
+            // 如果是0，手動記錄符號狀態
+            if(!state.editing.lastSign) state.editing.lastSign = {};
+            state.editing.lastSign[p] = (state.editing.lastSign[p] === -1) ? 1 : -1;
+        }
+        updateProfitInputs();
+    }
 
-  players = players.filter(p => p !== name);
-  Object.keys(records).forEach(d => {
-    delete records[d][name];
-    if (Object.keys(records[d]).length === 0) delete records[d];
-  });
+    function setVal(p, v) {
+        const abs = parseInt(v) || 0;
+        const currentSign = (state.editing.profits[p] < 0) ? -1 : 1;
+        state.editing.profits[p] = abs * currentSign;
+        calc();
+    }
 
-  if (currentPlayer === name) currentPlayer = players[0] || "";
-  saveToCloud();
-}
+    function changeGames(d) {
+        state.editing.games = Math.max(0, state.editing.games + d);
+        document.getElementById('editGames').innerText = state.editing.games;
+        calc();
+    }
 
-/* ================= 紀錄 ================= */
-function saveRecord() {
-  const amount = Number(document.getElementById("amountInput").value);
-  if (!currentPlayer || isNaN(amount)) return;
+    function calc() {
+        const fee = state.editing.games * 200;
+        const total = Object.values(state.editing.profits).reduce((a,b) => a+b, 0);
+        const bal = fee + total;
+        document.getElementById('feeText').innerText = fee;
+        document.getElementById('balanceText').innerText = bal;
+        document.getElementById('balanceText').style.color = bal === 0 ? '#10b981' : '#ef4444';
+    }
 
-  const today = new Date().toISOString().slice(0, 10);
-  if (!records[today]) records[today] = {};
-  records[today][currentPlayer] = amount;
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
-  document.getElementById("amountInput").value = "";
-  saveToCloud();
-}
+    function save() {
+        state.records[state.editing.date] = state.editing;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+        render();
+        closeModal();
+    }
 
-function renderCalendar() {
-  const div = document.getElementById("calendar");
-  div.innerHTML = "";
+    function del() {
+        if(confirm('確定刪除紀錄？')) {
+            delete state.records[state.editing.date];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+            render();
+            closeModal();
+        }
+    }
 
-  Object.keys(records).sort().reverse().forEach(date => {
-    const d = document.createElement("div");
-    d.className = "border-b py-1";
-    d.textContent = date + "：" +
-      Object.entries(records[date]).map(([p, v]) => `${p} ${v}`).join("，");
-    div.appendChild(d);
-  });
-}
+    document.getElementById('prevMonth').onclick = () => {
+        state.viewMonth--;
+        if(state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
+        render();
+    };
 
-/* ================= 統計 ================= */
-function calculatePlayDays() {
-  const days = {};
-  players.forEach(p => days[p] = 0);
+    document.getElementById('nextMonth').onclick = () => {
+        state.viewMonth++;
+        if(state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
+        render();
+    };
 
-  Object.values(records).forEach(day => {
-    players.forEach(p => {
-      if (day[p] !== undefined) days[p]++;
-    });
-  });
-  return days;
-}
-
-function renderStats() {
-  const c = document.getElementById("statsContainer");
-  c.innerHTML = "";
-
-  const days = calculatePlayDays();
-
-  players.forEach(p => {
-    let total = 0;
-    Object.values(records).forEach(day => {
-      if (day[p] !== undefined) total += Number(day[p]);
-    });
-
-    const div = document.createElement("div");
-    div.textContent = `${p}｜總輸贏 ${total}｜來打 ${days[p]} 天`;
-    c.appendChild(div);
-  });
-}
-
-/* ================= 初始化 ================= */
-function renderAll() {
-  renderPlayerSelector();
-  renderCalendar();
-  renderStats();
-}
-
-async function init() {
-  await loadData();
-  renderAll();
-  listenCloudChanges();
-}
-
-init();
+    // 啟動
+    window.onload = render;
 </script>
 
 </body>
