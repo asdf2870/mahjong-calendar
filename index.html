@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙女家麻將室 - 2026 紀錄</title>
+    <title>仙女家麻將室 - 雲端同步版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -70,6 +70,7 @@
             transition: all 0.2s;
             background: white;
             border: 1px solid #eee;
+            position: relative;
         }
 
         .calendar-day:active { transform: scale(0.9); }
@@ -194,6 +195,18 @@
             border: 1.5px dashed #ccc;
             color: #999;
         }
+
+        .sync-status {
+            font-size: 10px;
+            color: #4caf50;
+            margin-top: 4px;
+        }
+        .syncing { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -201,7 +214,8 @@
 <div class="journal-container">
     <div class="header">
         <h1>仙女家麻將室</h1>
-        <p class="text-sm opacity-60">2026 年度手帳紀錄</p>
+        <p class="text-sm opacity-60">2026 雲端即時同步中</p>
+        <div id="connectionStatus" class="sync-status">📡 正在連線雲端...</div>
     </div>
 
     <div class="stats-card">
@@ -233,7 +247,7 @@
     </div>
 
     <div class="flex flex-col items-center gap-2 mt-10">
-        <p class="text-center text-xs text-gray-400">資料已自動備份於本地儲存空間</p>
+        <p class="text-center text-xs text-gray-400">登入 ID: <span id="userIdDisplay">載入中...</span></p>
         <button onclick="exportData()" class="text-[10px] text-pink-300 underline">備份數據 (JSON)</button>
     </div>
 </div>
@@ -272,7 +286,7 @@
 
         <div class="grid grid-cols-2 gap-3 mt-6">
             <button onclick="closeModal()" class="py-3 bg-gray-100 text-gray-600 rounded-full font-bold">取消</button>
-            <button onclick="saveRecord()" class="py-3 bg-pink-400 text-white rounded-full font-bold shadow-md">儲存紀錄</button>
+            <button id="saveBtn" onclick="saveRecord()" class="py-3 bg-pink-400 text-white rounded-full font-bold shadow-md">儲存紀錄</button>
         </div>
         <button onclick="deleteRecord()" class="w-full mt-6 text-xs text-red-300">❌ 刪除本日紀錄</button>
     </div>
@@ -280,41 +294,80 @@
 
 <div id="toast" class="toast">已儲存</div>
 
-<script>
-    const STORAGE_KEY = 'mahjong_records_v1_2026';
-    const SETTINGS_KEY = 'mahjong_players_v1';
-    
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'mahjong-2026';
+
+    let user = null;
     let defaultPlayers = ["我", "菜菜", "美琪", "柚柚", "亮亮", "Willy", "小比", "宗穎", "蘊蘊"];
     let customPlayers = [];
-    
-    let playerSigns = {};
+    let records = {};
     let currentYear = 2026;
     let currentMonth = 0; 
-    let records = {};
     let editingDate = '';
     let tempRecord = {};
+    let playerSigns = {};
 
-    function loadData() {
+    async function initAuth() {
         try {
-            const savedRecords = localStorage.getItem(STORAGE_KEY);
-            records = savedRecords ? JSON.parse(savedRecords) : {};
-            
-            const savedPlayers = localStorage.getItem(SETTINGS_KEY);
-            customPlayers = savedPlayers ? JSON.parse(savedPlayers) : [];
-        } catch (e) { 
-            records = {}; 
-            customPlayers = [];
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (error) {
+            console.error("Auth Error:", error);
+            document.getElementById('connectionStatus').innerText = "❌ 連線失敗";
         }
     }
 
-    function getAllPlayers() {
-        return [...defaultPlayers, ...customPlayers];
+    onAuthStateChanged(auth, (u) => {
+        user = u;
+        if (user) {
+            document.getElementById('userIdDisplay').innerText = user.uid;
+            document.getElementById('connectionStatus').innerText = "✅ 雲端同步中";
+            startSync();
+        }
+    });
+
+    function startSync() {
+        if (!user) return;
+
+        const recordsCol = collection(db, 'artifacts', appId, 'public', 'data', 'records');
+        onSnapshot(recordsCol, (snapshot) => {
+            records = {};
+            snapshot.forEach(doc => {
+                records[doc.id] = doc.data();
+            });
+            renderCalendar();
+        }, (err) => console.error("Records Sync Error:", err));
+
+        // 修正路徑：將 settings 改為 settings/global 以確保路徑為偶數個片段
+        const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
+        onSnapshot(settingsDoc, (snapshot) => {
+            if (snapshot.exists()) {
+                customPlayers = snapshot.data().customPlayers || [];
+            }
+            renderCalendar();
+        }, (err) => console.error("Settings Sync Error:", err));
     }
 
-    function init() {
-        loadData();
+    window.changeMonth = (delta) => {
+        currentMonth += delta;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
         renderCalendar();
-        document.getElementById('editModal').onclick = closeModal;
+    };
+
+    function getAllPlayers() {
+        return [...defaultPlayers, ...customPlayers];
     }
 
     function renderCalendar() {
@@ -341,12 +394,11 @@
                     valDisplay = '有局';
                 }
             }
-            calendar.innerHTML += `
-                <div class="calendar-day ${bgClass}" onclick="openModal('${dateStr}')">
-                    <span class="day-label">${day}</span>
-                    <span class="day-val">${valDisplay}</span>
-                </div>
-            `;
+            const dayEl = document.createElement('div');
+            dayEl.className = `calendar-day ${bgClass}`;
+            dayEl.onclick = () => openModal(dateStr);
+            dayEl.innerHTML = `<span class="day-label">${day}</span><span class="day-val">${valDisplay}</span>`;
+            calendar.appendChild(dayEl);
         }
         updateMonthlyStats();
     }
@@ -365,7 +417,6 @@
             if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
                 const rec = records[date];
                 monthGames += (rec.games || 0);
-                
                 rec.players.forEach(p => {
                     friendsDays[p] = (friendsDays[p] || 0) + 1;
                     const val = parseInt(rec.profits[p]) || 0;
@@ -382,90 +433,51 @@
 
         const friendsDiv = document.getElementById('friendsStats');
         friendsDiv.innerHTML = '';
-        
-        // 只顯示這個月有出現的人
         const activePlayers = allPossiblePlayers.filter(p => friendsDays[p] > 0);
-        const sortedPlayers = activePlayers.sort((a, b) => (friendsDays[b] || 0) - (friendsDays[a] || 0));
+        const sortedPlayers = activePlayers.sort((a, b) => friendsDays[b] - friendsDays[a]);
 
         if (sortedPlayers.length === 0) {
             friendsDiv.innerHTML = '<p class="text-center text-gray-300 py-4">本月尚無對戰紀錄</p>';
+            return;
         }
 
         sortedPlayers.forEach(p => {
             const pVal = friendsTotal[p] || 0;
             const pDays = friendsDays[p] || 0;
-            
             friendsDiv.innerHTML += `
                 <div class="flex justify-between items-center py-2 border-b border-pink-50 last:border-0">
                     <div class="flex items-center gap-2">
                         <span class="font-medium text-gray-700 min-w-[3rem]">${p}</span>
-                        <span class="text-[10px] px-2 py-0.5 bg-gray-100 rounded-full text-gray-400">
-                            ${pDays} 天
-                        </span>
+                        <span class="text-[10px] px-2 py-0.5 bg-gray-100 rounded-full text-gray-400">${pDays} 天</span>
                     </div>
                     <span class="font-bold ${pVal > 0 ? 'text-pink-500' : (pVal < 0 ? 'text-gray-400' : 'text-gray-300')}">
                         ${pVal > 0 ? '+' : ''}${pVal}
                     </span>
-                </div>
-            `;
+                </div>`;
         });
     }
 
-    function changeMonth(delta) {
-        currentMonth += delta;
-        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-        renderCalendar();
-    }
-
-    function renderPlayerSelector() {
-        const container = document.getElementById('playerSelector');
-        const all = getAllPlayers();
-        
-        container.innerHTML = all.map(p => `
-            <span class="player-chip ${tempRecord.players.includes(p) ? 'selected' : ''}" id="chip-${p}" onclick="togglePlayer('${p}')">${p}</span>
-        `).join('');
-        
-        // 添加自定義人名按鈕
-        container.innerHTML += `
-            <span class="player-chip add-player-btn" onclick="addNewPlayer()">➕</span>
-        `;
-    }
-
-    function addNewPlayer() {
-        const name = prompt("請輸入新牌咖的名字：");
-        if (name && name.trim()) {
-            const trimmedName = name.trim();
-            if (getAllPlayers().includes(trimmedName)) {
-                alert("此名字已存在囉！");
-                return;
-            }
-            customPlayers.push(trimmedName);
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(customPlayers));
-            
-            // 自動選中新加的人
-            togglePlayer(trimmedName);
-        }
-    }
-
-    function openModal(date) {
+    window.openModal = (date) => {
         editingDate = date;
         document.getElementById('modalDateLabel').innerText = date.replace(/-/g, ' / ');
         const record = records[date] || { games: 0, players: [], profits: {} };
         tempRecord = JSON.parse(JSON.stringify(record));
-        
         getAllPlayers().forEach(p => {
             const val = tempRecord.profits[p] || 0;
             playerSigns[p] = val < 0 ? -1 : 1;
         });
-
         updateModalUI();
         document.getElementById('editModal').style.display = 'flex';
-    }
+    };
+
+    window.closeModal = () => document.getElementById('editModal').style.display = 'none';
 
     function updateModalUI() {
         document.getElementById('editGames').innerText = tempRecord.games;
-        renderPlayerSelector();
+        const selector = document.getElementById('playerSelector');
+        selector.innerHTML = getAllPlayers().map(p => `
+            <span class="player-chip ${tempRecord.players.includes(p) ? 'selected' : ''}" onclick="togglePlayer('${p}')">${p}</span>
+        `).join('') + `<span class="player-chip add-player-btn" onclick="addNewPlayer()">➕</span>`;
 
         const inputDiv = document.getElementById('profitInputs');
         inputDiv.innerHTML = tempRecord.players.map(p => {
@@ -475,31 +487,18 @@
             <div class="input-group">
                 <span class="font-bold text-pink-700">${p}</span>
                 <div class="flex items-center gap-3">
-                    <button onclick="toggleSign('${p}')" 
-                        class="toggle-sign-btn ${isNegative ? 'sign-minus' : 'sign-plus'}">
+                    <button onclick="toggleSign('${p}')" class="toggle-sign-btn ${isNegative ? 'sign-minus' : 'sign-plus'}">
                         ${isNegative ? '輸 -' : '贏 +'}
                     </button>
-                    <input type="number" 
-                        value="${absVal === 0 ? '' : absVal}" 
-                        placeholder="0"
-                        oninput="updateProfit('${p}', this.value)" 
-                        onfocus="this.select()"
-                        inputmode="numeric">
+                    <input type="number" value="${absVal === 0 ? '' : absVal}" placeholder="0"
+                        oninput="updateProfit('${p}', this.value)" onfocus="this.select()" inputmode="numeric">
                 </div>
-            </div>
-            `;
+            </div>`;
         }).join('');
         calculateBalance();
     }
 
-    function toggleSign(player) {
-        playerSigns[player] = playerSigns[player] === 1 ? -1 : 1;
-        const absVal = Math.abs(tempRecord.profits[player] || 0);
-        tempRecord.profits[player] = absVal * playerSigns[player];
-        updateModalUI();
-    }
-
-    function togglePlayer(player) {
+    window.togglePlayer = (player) => {
         if (tempRecord.players.includes(player)) {
             tempRecord.players = tempRecord.players.filter(p => p !== player);
             delete tempRecord.profits[player];
@@ -509,19 +508,26 @@
             playerSigns[player] = -1;
         }
         updateModalUI();
-    }
+    };
 
-    function updateProfit(player, valStr) {
+    window.toggleSign = (player) => {
+        playerSigns[player] = playerSigns[player] === 1 ? -1 : 1;
+        const absVal = Math.abs(tempRecord.profits[player] || 0);
+        tempRecord.profits[player] = absVal * playerSigns[player];
+        updateModalUI();
+    };
+
+    window.updateProfit = (player, valStr) => {
         const absVal = parseInt(valStr) || 0;
         tempRecord.profits[player] = absVal * playerSigns[player];
         calculateBalance();
-    }
+    };
 
-    function adjustGames(delta) {
+    window.adjustGames = (delta) => {
         tempRecord.games = Math.max(0, tempRecord.games + delta);
         document.getElementById('editGames').innerText = tempRecord.games;
         calculateBalance();
-    }
+    };
 
     function calculateBalance() {
         const tableFee = (tempRecord.games || 0) * 200;
@@ -540,46 +546,71 @@
         }
     }
 
-    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
-
-    function saveRecord() {
+    window.saveRecord = async () => {
+        if (!user) return;
         const tableFee = tempRecord.games * 200;
         const totalProfit = Object.values(tempRecord.profits).reduce((a, b) => a + b, 0);
         if (tableFee + totalProfit !== 0 && tempRecord.games > 0) {
             if (!confirm('帳目尚未平齊，確定要儲存嗎？')) return;
         }
-        records[editingDate] = tempRecord;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-        renderCalendar();
-        closeModal();
+
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = "儲存中...";
+
+        try {
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', editingDate);
+            await setDoc(docRef, tempRecord);
+            showToast("✅ 已同步至雲端");
+            closeModal();
+        } catch (e) {
+            console.error(e);
+            alert("儲存失敗，請檢查網路連線");
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "儲存紀錄";
+        }
+    };
+
+    window.deleteRecord = async () => {
+        if (!user) return;
+        if (confirm('確定要刪除這天的雲端紀錄嗎？')) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'records', editingDate));
+            showToast("🗑️ 已從雲端刪除");
+            closeModal();
+        }
+    };
+
+    window.addNewPlayer = async () => {
+        const name = prompt("請輸入新牌咖的名字：");
+        if (name && name.trim()) {
+            const trimmedName = name.trim();
+            if (getAllPlayers().includes(trimmedName)) return alert("名字已存在");
+            customPlayers.push(trimmedName);
+            // 修正路徑：確保為偶數片段
+            const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
+            await setDoc(settingsDoc, { customPlayers }, { merge: true });
+            updateModalUI();
+        }
+    };
+
+    function showToast(msg) {
         const toast = document.getElementById('toast');
+        toast.innerText = msg;
         toast.style.display = 'block';
         setTimeout(() => toast.style.display = 'none', 2000);
     }
 
-    function deleteRecord() {
-        if (confirm('確定要刪除嗎？')) {
-            delete records[editingDate];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-            renderCalendar();
-            closeModal();
-        }
-    }
-
-    function exportData() {
-        const fullExport = {
-            records: records,
-            customPlayers: customPlayers
-        };
-        const dataStr = JSON.stringify(fullExport, null, 2);
+    window.exportData = () => {
+        const dataStr = JSON.stringify({ records, customPlayers }, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `mahjong_full_backup.json`;
+        a.download = `mahjong_cloud_backup_${new Date().toLocaleDateString()}.json`;
         a.click();
-    }
+    };
 
-    window.onload = init;
+    initAuth();
 </script>
 </body>
 </html>
