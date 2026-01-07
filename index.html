@@ -35,3 +35,200 @@
   </div>
 
   <!-- 日曆紀錄 -->
+  <div class="bg-white rounded shadow p-3">
+    <h2 class="font-bold mb-2">📅 紀錄</h2>
+    <div id="calendar"></div>
+  </div>
+
+</div>
+
+<!-- ================= 統計 / 人員 ================= -->
+<div id="managePage" class="hidden">
+
+  <!-- 新增玩家 -->
+  <div class="mb-4 flex gap-2">
+    <input id="newPlayerName" class="border px-2 py-1 rounded" placeholder="新增人名">
+    <button onclick="addPlayer()" class="bg-pink-300 px-3 py-1 rounded">新增</button>
+  </div>
+
+  <!-- 刪除玩家 -->
+  <div class="mb-6 flex gap-2">
+    <select id="deletePlayerSelect" class="border px-2 py-1 rounded"></select>
+    <button onclick="deletePlayer()" class="bg-red-300 px-3 py-1 rounded">刪除成員</button>
+  </div>
+
+  <!-- 統計 -->
+  <div class="bg-white rounded shadow p-3">
+    <h2 class="font-bold mb-2">📊 統計</h2>
+    <div id="statsContainer" class="space-y-1 text-sm"></div>
+  </div>
+
+</div>
+
+<!-- ================= Firebase ================= -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* ---------- Firebase ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyBByyCj9jUyTpV96GQUUcOhJk81tNsxNt8",
+  authDomain: "mahjong-calendar-2870.firebaseapp.com",
+  projectId: "mahjong-calendar-2870",
+  storageBucket: "mahjong-calendar-2870.firebasestorage.app",
+  messagingSenderId: "169815645370",
+  appId: "1:169815645370:web:052e7e239460a4d05ab683"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* ---------- 資料 ---------- */
+let players = ["仙女"];
+let records = {};
+let currentPlayer = "";
+
+/* ---------- 分頁 ---------- */
+function showPage(page) {
+  document.getElementById("calendarPage").classList.toggle("hidden", page !== "calendar");
+  document.getElementById("managePage").classList.toggle("hidden", page !== "manage");
+}
+
+/* ---------- 雲端 ---------- */
+async function loadData() {
+  const doc = await db.collection("mahjong").doc("shared").get();
+  if (doc.exists) {
+    const data = doc.data();
+    players = data.players || players;
+    records = data.records || {};
+  }
+}
+
+function saveToCloud() {
+  db.collection("mahjong").doc("shared").set({ players, records });
+}
+
+function listenCloudChanges() {
+  db.collection("mahjong").doc("shared").onSnapshot(doc => {
+    if (doc.exists) {
+      const data = doc.data();
+      players = data.players || players;
+      records = data.records || {};
+      renderAll();
+    }
+  });
+}
+
+/* ---------- 玩家 ---------- */
+function renderPlayerSelector() {
+  const select = document.getElementById("playerSelect");
+  const del = document.getElementById("deletePlayerSelect");
+  select.innerHTML = "";
+  del.innerHTML = "";
+
+  players.forEach(p => {
+    select.add(new Option(p, p));
+    del.add(new Option(p, p));
+  });
+
+  if (!currentPlayer && players.length) currentPlayer = players[0];
+  select.value = currentPlayer;
+  select.onchange = e => currentPlayer = e.target.value;
+}
+
+function addPlayer() {
+  const input = document.getElementById("newPlayerName");
+  const name = input.value.trim();
+  if (!name || players.includes(name)) return;
+  players.push(name);
+  input.value = "";
+  saveToCloud();
+}
+
+function deletePlayer() {
+  const name = document.getElementById("deletePlayerSelect").value;
+  if (!confirm(`確定刪除 ${name}？`)) return;
+
+  players = players.filter(p => p !== name);
+  Object.keys(records).forEach(d => {
+    delete records[d][name];
+    if (Object.keys(records[d]).length === 0) delete records[d];
+  });
+
+  if (currentPlayer === name) currentPlayer = players[0] || "";
+  saveToCloud();
+}
+
+/* ---------- 記帳 ---------- */
+function saveRecord() {
+  const amount = Number(document.getElementById("amountInput").value);
+  if (!currentPlayer || isNaN(amount)) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (!records[today]) records[today] = {};
+  records[today][currentPlayer] = amount;
+
+  document.getElementById("amountInput").value = "";
+  saveToCloud();
+}
+
+function renderCalendar() {
+  const div = document.getElementById("calendar");
+  div.innerHTML = "";
+
+  Object.keys(records).sort().reverse().forEach(date => {
+    const d = document.createElement("div");
+    d.className = "border-b py-1";
+    d.textContent = date + "：" +
+      Object.entries(records[date]).map(([p, v]) => `${p} ${v}`).join("，");
+    div.appendChild(d);
+  });
+}
+
+/* ---------- 統計 ---------- */
+function calculatePlayDays() {
+  const days = {};
+  players.forEach(p => days[p] = 0);
+  Object.values(records).forEach(day => {
+    players.forEach(p => {
+      if (day[p] !== undefined) days[p]++;
+    });
+  });
+  return days;
+}
+
+function renderStats() {
+  const c = document.getElementById("statsContainer");
+  c.innerHTML = "";
+  const days = calculatePlayDays();
+
+  players.forEach(p => {
+    let total = 0;
+    Object.values(records).forEach(day => {
+      if (day[p] !== undefined) total += Number(day[p]);
+    });
+    const div = document.createElement("div");
+    div.textContent = `${p}｜總輸贏 ${total}｜來打 ${days[p]} 天`;
+    c.appendChild(div);
+  });
+}
+
+/* ---------- 初始化 ---------- */
+function renderAll() {
+  renderPlayerSelector();
+  renderCalendar();
+  renderStats();
+}
+
+async function init() {
+  await loadData();
+  renderAll();
+  listenCloudChanges();
+  showPage("calendar"); // ✅ 首頁顯示日曆
+}
+
+init();
+</script>
+
+</body>
+</html>
