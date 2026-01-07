@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙女家麻將室 - 雲端同步版</title>
+    <title>仙女家麻將室 - 雲端版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -24,7 +24,6 @@
             padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
             background-image: radial-gradient(#ffb7c5 0.5px, transparent 0.5px);
             background-size: 20px 20px;
-            user-select: none;
         }
 
         .journal-container {
@@ -34,14 +33,6 @@
             min-height: 100vh;
             box-shadow: 0 0 20px rgba(0,0,0,0.05);
             padding: 20px;
-            position: relative;
-        }
-
-        .header {
-            text-align: center;
-            border-bottom: 2px dashed var(--primary);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
         }
 
         .header h1 {
@@ -49,6 +40,7 @@
             font-size: 2rem;
             color: #d81b60;
             margin: 0;
+            text-align: center;
         }
 
         .calendar-grid {
@@ -67,15 +59,9 @@
             justify-content: center;
             font-size: 0.75rem;
             cursor: pointer;
-            transition: all 0.2s;
             background: white;
             border: 1px solid #eee;
-            position: relative;
         }
-
-        .calendar-day:active { transform: scale(0.9); }
-        .day-label { font-weight: bold; margin-bottom: 2px; }
-        .day-val { font-size: 0.6rem; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
 
         .bg-win { background-color: var(--win) !important; border: 1.5px solid #ff8fa3; color: #d81b60; }
         .bg-loss { background-color: var(--loss) !important; border: 1.5px solid #bdbdbd; color: #616161; }
@@ -100,7 +86,6 @@
             max-width: 400px;
             max-height: 85vh;
             overflow-y: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
 
         .player-chip {
@@ -111,23 +96,11 @@
             display: inline-block;
             cursor: pointer;
             font-size: 0.8rem;
-            transition: all 0.2s;
         }
 
         .player-chip.selected {
             background-color: var(--primary);
             color: white;
-        }
-
-        .input-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 8px 0;
-            padding: 10px 14px;
-            background: #fdfdfd;
-            border: 1px solid #f0f0f0;
-            border-radius: 12px;
         }
 
         .stats-card {
@@ -139,83 +112,38 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
 
-        input[type="number"] {
-            width: 80px;
-            border: 1.5px solid #eee;
-            border-radius: 8px;
-            padding: 6px;
+        .sync-status {
+            font-size: 10px;
             text-align: center;
-            outline: none;
-            font-weight: 500;
-        }
-
-        .toggle-sign-btn {
-            width: 36px;
-            height: 36px;
+            margin-top: 5px;
+            padding: 2px 8px;
             border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 0.85rem;
-            transition: all 0.1s;
+            display: inline-block;
         }
-        .sign-plus { background-color: #ffccd5; color: #d81b60; border: 1px solid #ff8fa3; }
-        .sign-minus { background-color: #616161; color: white; border: 1px solid #424242; }
+        .status-online { background: #e8f5e9; color: #2e7d32; }
+        .status-offline { background: #fff3e0; color: #ef6c00; }
 
         .btn-circle {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: none;
-            background: var(--primary);
-            color: white;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
         }
 
         .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            display: none;
-            z-index: 200;
-        }
-
-        .add-player-btn {
-            background-color: #f0f0f0;
-            border: 1.5px dashed #ccc;
-            color: #999;
-        }
-
-        .sync-status {
-            font-size: 10px;
-            color: #4caf50;
-            margin-top: 4px;
-        }
-        .syncing { animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 10px 20px;
+            border-radius: 20px; display: none; z-index: 200;
         }
     </style>
 </head>
 <body>
 
 <div class="journal-container">
-    <div class="header">
+    <div class="header mb-4">
         <h1>仙女家麻將室</h1>
-        <p class="text-sm opacity-60">2026 雲端即時同步中</p>
-        <div id="connectionStatus" class="sync-status">📡 正在初始化連線...</div>
+        <div class="flex justify-center">
+            <div id="connectionStatus" class="sync-status status-offline">⏳ 正在連線中 (目前可離線使用)</div>
+        </div>
     </div>
 
     <div class="stats-card">
@@ -239,19 +167,17 @@
     <div class="calendar-grid" id="calendar"></div>
 
     <div class="stats-card">
-        <h3 class="font-bold border-b mb-3 pb-1 flex justify-between items-center">
-            <span>🧧 本月好友戰績榜</span>
-            <span class="text-[10px] text-gray-400 font-normal">( 頻率 | 輸贏 )</span>
-        </h3>
+        <h3 class="font-bold border-b mb-3 pb-1">🧧 本月好友戰績榜</h3>
         <div id="friendsStats" class="text-sm space-y-2"></div>
     </div>
 
-    <div class="flex flex-col items-center gap-2 mt-10">
-        <p class="text-center text-xs text-gray-400">登入 ID: <span id="userIdDisplay">連線中...</span></p>
-        <button onclick="exportData()" class="text-[10px] text-pink-300 underline">備份數據 (JSON)</button>
+    <div class="text-center mt-10">
+        <p class="text-[10px] text-gray-400">ID: <span id="userIdDisplay">Guest</span></p>
+        <button onclick="exportData()" class="text-[10px] text-pink-300 underline">手動備份數據</button>
     </div>
 </div>
 
+<!-- 編輯視窗 -->
 <div id="editModal" class="modal">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h2 id="modalDateLabel" class="font-bold text-lg mb-4 text-center text-pink-600">日期</h2>
@@ -260,241 +186,178 @@
             <label class="block text-sm font-bold mb-2">今日將數：</label>
             <div class="flex items-center gap-6 justify-center bg-pink-50 p-4 rounded-2xl">
                 <button class="btn-circle" onclick="adjustGames(-1)">-</button>
-                <span id="editGames" class="text-2xl font-bold w-10 text-center">0</span>
+                <span id="editGames" class="text-2xl font-bold">0</span>
                 <button class="btn-circle" onclick="adjustGames(1)">+</button>
             </div>
         </div>
 
         <div class="mb-5">
             <label class="block text-sm font-bold mb-2">參與牌咖：</label>
-            <div id="playerSelector" class="flex flex-wrap justify-start"></div>
+            <div id="playerSelector" class="flex flex-wrap"></div>
         </div>
 
         <div id="profitInputs" class="space-y-2 mb-5"></div>
 
-        <div class="bg-gray-50 p-4 rounded-xl">
-            <div class="flex justify-between text-xs mb-1 text-gray-500">
-                <span>台費 (將 × 200):</span>
+        <div class="bg-gray-50 p-4 rounded-xl text-sm">
+            <div class="flex justify-between mb-1">
+                <span>台費 (將×200):</span>
                 <span id="calcTableFee">0</span>
             </div>
-            <div class="flex justify-between font-bold text-base">
+            <div class="flex justify-between font-bold">
                 <span>平帳校驗 (應為0):</span>
                 <span id="calcBalance">0</span>
             </div>
-            <p id="balanceMsg" class="text-[10px] text-right mt-1"></p>
         </div>
 
         <div class="grid grid-cols-2 gap-3 mt-6">
-            <button onclick="closeModal()" class="py-3 bg-gray-100 text-gray-600 rounded-full font-bold">取消</button>
-            <button id="saveBtn" onclick="saveRecord()" class="py-3 bg-pink-400 text-white rounded-full font-bold shadow-md">儲存紀錄</button>
+            <button onclick="closeModal()" class="py-3 bg-gray-100 rounded-full">取消</button>
+            <button id="saveBtn" onclick="saveRecord()" class="py-3 bg-pink-400 text-white rounded-full font-bold">儲存</button>
         </div>
-        <button onclick="deleteRecord()" class="w-full mt-6 text-xs text-red-300">❌ 刪除本日紀錄</button>
+        <button onclick="deleteRecord()" class="w-full mt-6 text-xs text-red-300">❌ 刪除紀錄</button>
     </div>
 </div>
 
-<div id="toast" class="toast">已儲存</div>
+<div id="toast" class="toast"></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+    // Firebase 配置
     const firebaseConfig = JSON.parse(__firebase_config);
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'mahjong-2026';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'mahjong-app';
 
+    // 狀態變數
     let user = null;
-    let defaultPlayers = ["我", "菜菜", "美琪", "柚柚", "亮亮", "Willy", "小比", "宗穎", "蘊蘊"];
-    let customPlayers = [];
     let records = {};
+    let customPlayers = [];
+    let defaultPlayers = ["我", "菜菜", "美琪", "柚柚", "亮亮", "Willy", "小比", "宗穎", "蘊蘊"];
     let currentYear = 2026;
-    let currentMonth = new Date().getMonth(); 
+    let currentMonth = new Date().getMonth();
     let editingDate = '';
     let tempRecord = {};
-    let playerSigns = {};
 
-    // 啟動身份驗證與逾時保護
-    async function initAuth() {
-        const statusEl = document.getElementById('connectionStatus');
-        statusEl.innerText = "🔑 正在驗證身份...";
+    // 1. 初始化 Auth (增加超快進入模式)
+    async function startApp() {
+        renderCalendar(); // 先渲染介面
         
-        // 逾時計時器：如果 5 秒內 Auth 沒有響應，強制重試匿名登入
-        const authTimeout = setTimeout(() => {
-            if (!user) {
-                console.warn("Auth Timeout - Forcing Anonymous Sign In");
-                signInAnonymously(auth).catch(e => {
-                    statusEl.innerText = "⚠️ 連線受阻，請重新整理頁面";
-                });
-            }
-        }, 5000);
-
+        // 嘗試驗證，但不阻塞
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                console.log("Using Custom Token");
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
-                console.log("Using Anonymous Sign In");
                 await signInAnonymously(auth);
             }
-        } catch (error) {
-            console.error("Auth Error:", error);
-            statusEl.innerText = "⚠️ 驗證重試中...";
-            setTimeout(() => signInAnonymously(auth), 1000);
+        } catch (e) {
+            console.warn("Auth failed, continuing in guest mode.");
+            document.getElementById('connectionStatus').innerText = "📴 離線模式 (仍可操作)";
         }
     }
 
     onAuthStateChanged(auth, (u) => {
-        user = u;
-        if (user) {
-            console.log("User Authenticated:", user.uid);
-            document.getElementById('userIdDisplay').innerText = user.uid;
+        if (u) {
+            user = u;
+            document.getElementById('userIdDisplay').innerText = user.uid.substring(0,8);
             document.getElementById('connectionStatus').innerText = "✅ 雲端同步中";
-            startSync();
-        } else {
-            document.getElementById('userIdDisplay').innerText = "未登入";
-            document.getElementById('connectionStatus').innerText = "❌ 尚未連線";
+            document.getElementById('connectionStatus').className = "sync-status status-online";
+            syncData();
         }
     });
 
-    function startSync() {
+    // 2. 同步邏輯
+    function syncData() {
         if (!user) return;
-
-        // 監聽紀錄
         const recordsCol = collection(db, 'artifacts', appId, 'public', 'data', 'records');
-        onSnapshot(recordsCol, (snapshot) => {
+        onSnapshot(recordsCol, (snap) => {
             records = {};
-            snapshot.forEach(doc => {
-                records[doc.id] = doc.data();
-            });
+            snap.forEach(d => records[d.id] = d.data());
             renderCalendar();
-        }, (err) => {
-            console.error("Records Sync Error:", err);
-            document.getElementById('connectionStatus').innerText = "❌ 同步錯誤 (權限或網路)";
-        });
+        }, (err) => console.error("Sync error", err));
 
-        // 監聽設定 (牌咖清單)
         const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
-        onSnapshot(settingsDoc, (snapshot) => {
-            if (snapshot.exists()) {
-                customPlayers = snapshot.data().customPlayers || [];
-            }
+        onSnapshot(settingsDoc, (snap) => {
+            if (snap.exists()) customPlayers = snap.data().customPlayers || [];
             renderCalendar();
-        }, (err) => console.error("Settings Sync Error:", err));
+        });
     }
 
-    window.changeMonth = (delta) => {
-        currentMonth += delta;
-        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-        renderCalendar();
-    };
-
-    function getAllPlayers() {
-        return [...defaultPlayers, ...customPlayers];
-    }
-
-    function renderCalendar() {
+    // 3. UI 渲染邏輯
+    window.renderCalendar = () => {
         const calendar = document.getElementById('calendar');
-        if (!calendar) return;
         calendar.innerHTML = '';
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         document.getElementById('currentMonthLabel').innerText = `${currentYear}年 ${currentMonth + 1}月`;
 
-        for (let i = 0; i < firstDay; i++) {
-            const empty = document.createElement('div');
-            calendar.appendChild(empty);
-        }
+        for (let i = 0; i < firstDay; i++) calendar.appendChild(document.createElement('div'));
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const record = records[dateStr];
-            let bgClass = '', valDisplay = '';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const rec = records[dateStr];
+            let cls = '', val = '';
 
-            if (record) {
-                const myProfit = record.profits["我"] || 0;
-                if (record.players.includes("我")) {
-                    bgClass = (myProfit > 0) ? 'bg-win' : (myProfit < 0 ? 'bg-loss' : 'bg-no-play');
-                    valDisplay = myProfit > 0 ? `+${myProfit}` : (myProfit === 0 ? '±0' : myProfit);
-                } else if (record.games > 0) {
-                    bgClass = 'bg-no-play';
-                    valDisplay = '有局';
+            if (rec) {
+                const myP = rec.profits["我"] || 0;
+                if (rec.players.includes("我")) {
+                    cls = myP > 0 ? 'bg-win' : (myP < 0 ? 'bg-loss' : 'bg-no-play');
+                    val = myP > 0 ? `+${myP}` : (myP === 0 ? '±0' : myP);
+                } else {
+                    cls = 'bg-no-play';
+                    val = '有局';
                 }
             }
-            const dayEl = document.createElement('div');
-            dayEl.className = `calendar-day ${bgClass}`;
-            dayEl.onclick = () => openModal(dateStr);
-            dayEl.innerHTML = `<span class="day-label">${day}</span><span class="day-val">${valDisplay}</span>`;
-            calendar.appendChild(dayEl);
+
+            const el = document.createElement('div');
+            el.className = `calendar-day ${cls}`;
+            el.innerHTML = `<span class="day-label">${d}</span><span class="day-val">${val}</span>`;
+            el.onclick = () => openModal(dateStr);
+            calendar.appendChild(el);
         }
-        updateMonthlyStats();
-    }
+        updateStats();
+    };
 
-    function updateMonthlyStats() {
-        let monthGames = 0, myProfit = 0, friendsTotal = {}, friendsDays = {};
-        const allPossiblePlayers = getAllPlayers();
-
-        allPossiblePlayers.forEach(p => {
-            friendsTotal[p] = 0;
-            friendsDays[p] = 0;
-        });
-
-        Object.keys(records).forEach(date => {
-            const d = new Date(date);
+    function updateStats() {
+        let totalG = 0, myP = 0, fTotal = {}, fDays = {};
+        const allP = [...defaultPlayers, ...customPlayers];
+        
+        Object.keys(records).forEach(k => {
+            const d = new Date(k);
             if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
-                const rec = records[date];
-                monthGames += (rec.games || 0);
-                rec.players.forEach(p => {
-                    friendsDays[p] = (friendsDays[p] || 0) + 1;
-                    const val = parseInt(rec.profits[p]) || 0;
-                    friendsTotal[p] = (friendsTotal[p] || 0) + val;
-                    if (p === "我") myProfit += val;
+                const r = records[k];
+                totalG += (r.games || 0);
+                r.players.forEach(p => {
+                    fDays[p] = (fDays[p] || 0) + 1;
+                    fTotal[p] = (fTotal[p] || 0) + (r.profits[p] || 0);
+                    if (p === "我") myP += (r.profits[p] || 0);
                 });
             }
         });
 
-        document.getElementById('monthTotalGames').innerText = monthGames;
-        const myProfitEl = document.getElementById('monthMyProfit');
-        myProfitEl.innerText = (myProfit > 0 ? '+' : '') + myProfit;
-        myProfitEl.style.color = myProfit > 0 ? '#d81b60' : (myProfit < 0 ? '#757575' : '#5d4037');
-
-        const friendsDiv = document.getElementById('friendsStats');
-        friendsDiv.innerHTML = '';
-        const activePlayers = allPossiblePlayers.filter(p => friendsDays[p] > 0);
-        const sortedPlayers = activePlayers.sort((a, b) => friendsDays[b] - friendsDays[a]);
-
-        if (sortedPlayers.length === 0) {
-            friendsDiv.innerHTML = '<p class="text-center text-gray-300 py-4">本月尚無對戰紀錄</p>';
-            return;
-        }
-
-        sortedPlayers.forEach(p => {
-            const pVal = friendsTotal[p] || 0;
-            const pDays = friendsDays[p] || 0;
-            friendsDiv.innerHTML += `
-                <div class="flex justify-between items-center py-2 border-b border-pink-50 last:border-0">
-                    <div class="flex items-center gap-2">
-                        <span class="font-medium text-gray-700 min-w-[3rem]">${p}</span>
-                        <span class="text-[10px] px-2 py-0.5 bg-gray-100 rounded-full text-gray-400">${pDays} 天</span>
-                    </div>
-                    <span class="font-bold ${pVal > 0 ? 'text-pink-500' : (pVal < 0 ? 'text-gray-400' : 'text-gray-300')}">
-                        ${pVal > 0 ? '+' : ''}${pVal}
-                    </span>
-                </div>`;
+        document.getElementById('monthTotalGames').innerText = totalG;
+        document.getElementById('monthMyProfit').innerText = (myP > 0 ? '+' : '') + myP;
+        
+        const list = document.getElementById('friendsStats');
+        list.innerHTML = '';
+        const sorted = Object.keys(fDays).sort((a,b) => fDays[b] - fDays[a]);
+        if (!sorted.length) list.innerHTML = '<p class="text-gray-300 text-center">暫無數據</p>';
+        sorted.forEach(p => {
+            list.innerHTML += `<div class="flex justify-between border-b border-pink-50 py-1">
+                <span>${p} <span class="text-[10px] text-gray-400">(${fDays[p]}天)</span></span>
+                <span class="font-bold ${fTotal[p]>0?'text-pink-500':'text-gray-400'}">${fTotal[p]>0?'+':''}${fTotal[p]}</span>
+            </div>`;
         });
     }
 
+    // 4. 互動邏輯
     window.openModal = (date) => {
         editingDate = date;
-        document.getElementById('modalDateLabel').innerText = date.replace(/-/g, ' / ');
-        const record = records[date] || { games: 0, players: [], profits: {} };
-        tempRecord = JSON.parse(JSON.stringify(record));
-        getAllPlayers().forEach(p => {
-            const val = tempRecord.profits[p] || 0;
-            playerSigns[p] = val < 0 ? -1 : 1;
-        });
+        document.getElementById('modalDateLabel').innerText = date;
+        const rec = records[date] || { games: 0, players: [], profits: {} };
+        tempRecord = JSON.parse(JSON.stringify(rec));
         updateModalUI();
         document.getElementById('editModal').style.display = 'flex';
     };
@@ -503,143 +366,107 @@
 
     function updateModalUI() {
         document.getElementById('editGames').innerText = tempRecord.games;
-        const selector = document.getElementById('playerSelector');
-        selector.innerHTML = getAllPlayers().map(p => `
-            <span class="player-chip ${tempRecord.players.includes(p) ? 'selected' : ''}" onclick="togglePlayer('${p}')">${p}</span>
-        `).join('') + `<span class="player-chip add-player-btn" onclick="addNewPlayer()">➕</span>`;
+        const sel = document.getElementById('playerSelector');
+        const allP = [...defaultPlayers, ...customPlayers];
+        sel.innerHTML = allP.map(p => `
+            <span class="player-chip ${tempRecord.players.includes(p)?'selected':''}" onclick="togglePlayer('${p}')">${p}</span>
+        `).join('') + `<span class="player-chip border-dashed text-gray-400" onclick="addPlayer()">+ 新牌咖</span>`;
 
-        const inputDiv = document.getElementById('profitInputs');
-        inputDiv.innerHTML = tempRecord.players.map(p => {
-            const absVal = Math.abs(tempRecord.profits[p] || 0);
-            const isNegative = playerSigns[p] === -1;
-            return `
-            <div class="input-group">
-                <span class="font-bold text-pink-700">${p}</span>
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleSign('${p}')" class="toggle-sign-btn ${isNegative ? 'sign-minus' : 'sign-plus'}">
-                        ${isNegative ? '輸 -' : '贏 +'}
-                    </button>
-                    <input type="number" value="${absVal === 0 ? '' : absVal}" placeholder="0"
-                        oninput="updateProfit('${p}', this.value)" onfocus="this.select()" inputmode="numeric">
-                </div>
-            </div>`;
-        }).join('');
-        calculateBalance();
+        const inputs = document.getElementById('profitInputs');
+        inputs.innerHTML = tempRecord.players.map(p => `
+            <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                <span class="font-bold">${p}</span>
+                <input type="number" class="w-24 p-1 border rounded text-center" value="${tempRecord.profits[p]||0}" 
+                    oninput="updateVal('${p}', this.value)" onfocus="this.select()">
+            </div>
+        `).join('');
+        calc();
     }
 
-    window.togglePlayer = (player) => {
-        if (tempRecord.players.includes(player)) {
-            tempRecord.players = tempRecord.players.filter(p => p !== player);
-            delete tempRecord.profits[player];
+    window.togglePlayer = (p) => {
+        if (tempRecord.players.includes(p)) {
+            tempRecord.players = tempRecord.players.filter(x => x !== p);
+            delete tempRecord.profits[p];
         } else {
-            tempRecord.players.push(player);
-            tempRecord.profits[player] = 0;
-            playerSigns[player] = -1;
+            tempRecord.players.push(p);
+            tempRecord.profits[p] = 0;
         }
         updateModalUI();
     };
 
-    window.toggleSign = (player) => {
-        playerSigns[player] = playerSigns[player] === 1 ? -1 : 1;
-        const absVal = Math.abs(tempRecord.profits[player] || 0);
-        tempRecord.profits[player] = absVal * playerSigns[player];
+    window.updateVal = (p, v) => {
+        tempRecord.profits[p] = parseInt(v) || 0;
+        calc();
+    };
+
+    window.adjustGames = (n) => {
+        tempRecord.games = Math.max(0, tempRecord.games + n);
         updateModalUI();
     };
 
-    window.updateProfit = (player, valStr) => {
-        const absVal = parseInt(valStr) || 0;
-        tempRecord.profits[player] = absVal * playerSigns[player];
-        calculateBalance();
-    };
-
-    window.adjustGames = (delta) => {
-        tempRecord.games = Math.max(0, tempRecord.games + delta);
-        document.getElementById('editGames').innerText = tempRecord.games;
-        calculateBalance();
-    };
-
-    function calculateBalance() {
-        const tableFee = (tempRecord.games || 0) * 200;
-        const totalProfit = Object.values(tempRecord.profits).reduce((a, b) => a + (parseInt(b) || 0), 0);
-        const balance = tableFee + totalProfit;
-        document.getElementById('calcTableFee').innerText = tableFee;
-        const balEl = document.getElementById('calcBalance');
-        balEl.innerText = balance;
-        const msgEl = document.getElementById('balanceMsg');
-        if (balance === 0) {
-            balEl.style.color = '#10b981';
-            msgEl.innerText = '✅ 帳目平齊';
-        } else {
-            balEl.style.color = '#ef4444';
-            msgEl.innerText = balance > 0 ? `多出 ${balance}` : `缺少 ${Math.abs(balance)}`;
-        }
+    function calc() {
+        const fee = tempRecord.games * 200;
+        const sum = Object.values(tempRecord.profits).reduce((a,b)=>a+b, 0);
+        document.getElementById('calcTableFee').innerText = fee;
+        document.getElementById('calcBalance').innerText = fee + sum;
     }
 
     window.saveRecord = async () => {
-        if (!user) return alert("連線尚未準備好，請稍候");
-        const tableFee = tempRecord.games * 200;
-        const totalProfit = Object.values(tempRecord.profits).reduce((a, b) => a + b, 0);
-        if (tableFee + totalProfit !== 0 && tempRecord.games > 0) {
-            if (!confirm('帳目尚未平齊，確定要儲存嗎？')) return;
+        if (!user) {
+            records[editingDate] = tempRecord;
+            renderCalendar();
+            showToast("⚠️ 已存至本地 (待連線後同步)");
+            closeModal();
+            return;
         }
-
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerText = "儲存中...";
-
         try {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', editingDate);
-            await setDoc(docRef, tempRecord);
-            showToast("✅ 已同步至雲端");
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'records', editingDate), tempRecord);
+            showToast("✅ 已同步雲端");
             closeModal();
         } catch (e) {
-            console.error(e);
-            alert("儲存失敗，請檢查網路連線");
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerText = "儲存紀錄";
+            alert("同步失敗，請檢查網路");
         }
     };
 
     window.deleteRecord = async () => {
-        if (!user) return;
-        if (confirm('確定要刪除這天的雲端紀錄嗎？')) {
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'records', editingDate));
-            showToast("🗑️ 已從雲端刪除");
-            closeModal();
-        }
+        if (!confirm("確定刪除？")) return;
+        if (user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'records', editingDate));
+        delete records[editingDate];
+        renderCalendar();
+        closeModal();
     };
 
-    window.addNewPlayer = async () => {
-        const name = prompt("請輸入新牌咖的名字：");
-        if (name && name.trim()) {
-            const trimmedName = name.trim();
-            if (getAllPlayers().includes(trimmedName)) return alert("名字已存在");
-            customPlayers.push(trimmedName);
-            const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
-            await setDoc(settingsDoc, { customPlayers }, { merge: true });
+    window.addPlayer = async () => {
+        const n = prompt("輸入名字");
+        if (n && !customPlayers.includes(n)) {
+            customPlayers.push(n);
+            if (user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global'), { customPlayers });
             updateModalUI();
         }
     };
 
-    function showToast(msg) {
-        const toast = document.getElementById('toast');
-        toast.innerText = msg;
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 2000);
+    window.changeMonth = (n) => {
+        currentMonth += n;
+        if (currentMonth < 0) { currentMonth=11; currentYear--; }
+        if (currentMonth > 11) { currentMonth=0; currentYear++; }
+        renderCalendar();
+    };
+
+    function showToast(m) {
+        const t = document.getElementById('toast');
+        t.innerText = m; t.style.display = 'block';
+        setTimeout(()=>t.style.display='none', 2000);
     }
 
     window.exportData = () => {
-        const dataStr = JSON.stringify({ records, customPlayers }, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(records)], {type:'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `mahjong_cloud_backup_${new Date().toLocaleDateString()}.json`;
+        a.download = 'mahjong_backup.json';
         a.click();
     };
 
-    // 啟動身份驗證
-    initAuth();
+    startApp();
 </script>
 </body>
 </html>
