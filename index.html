@@ -4,7 +4,421 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>仙女家麻將室 - 雲端版</title>
+    <script src="https://cdn.tailwindcss.com"></script><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仙女家麻將室 - 2026 紀錄</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ffb7c5;
+            --secondary: #fdf6e3;
+            --text: #5d4037;
+            --win: #ffccd5;
+            --loss: #e0e0e0;
+            --no-play: #fefae0;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--secondary);
+            color: var(--text);
+            margin: 0;
+            padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+            background-image: radial-gradient(#ffb7c5 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+            user-select: none;
+        }
+
+        .journal-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding: 20px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed var(--primary);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'ZCOOL+XiaoWei', serif;
+            font-size: 2.2rem;
+            color: #d81b60;
+            margin: 0;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            border: 1px solid #f0f0f0;
+        }
+
+        .calendar-day:active { transform: scale(0.9); }
+        .day-label { font-weight: bold; margin-bottom: 2px; }
+        .day-val { font-size: 0.65rem; font-weight: 500; width: 100%; text-align: center; overflow: hidden; }
+
+        .bg-win { background-color: var(--win) !important; border: 1.5px solid #ff8fa3; color: #d81b60; }
+        .bg-loss { background-color: var(--loss) !important; border: 1.5px solid #bdbdbd; color: #616161; }
+        .bg-no-play { background-color: var(--no-play) !important; border: 1.5px solid #e9edc9; color: #827717; }
+
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 28px;
+            width: 90%;
+            max-width: 420px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .player-chip {
+            padding: 8px 14px;
+            border: 1.5px solid var(--primary);
+            border-radius: 20px;
+            margin: 4px;
+            display: inline-block;
+            cursor: pointer;
+            font-size: 0.85rem;
+            background: white;
+        }
+
+        .player-chip.selected {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 12px;
+            background: #fdfdfd;
+            border-radius: 15px;
+            border: 1px solid #f5f5f5;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 6px solid var(--primary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+
+        .toggle-sign-btn {
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        .sign-plus { background-color: #ffccd5; color: #d81b60; }
+        .sign-minus { background-color: #616161; color: white; }
+
+        .btn-circle {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; border: none;
+        }
+
+        .toast {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 12px 24px;
+            border-radius: 30px; display: none; z-index: 200;
+        }
+    </style>
+</head>
+<body>
+
+<div class="journal-container">
+    <div class="header">
+        <h1>仙女家麻將室</h1>
+        <p class="text-xs opacity-60">2026 年度手帳紀錄</p>
+    </div>
+
+    <div class="stats-card">
+        <div class="flex justify-between items-center mb-4">
+            <button onclick="changeMonth(-1)" class="p-2 text-pink-400 font-bold">◀</button>
+            <h2 id="currentMonthLabel" class="font-bold text-lg">2026年 1月</h2>
+            <button onclick="changeMonth(1)" class="p-2 text-pink-400 font-bold">▶</button>
+        </div>
+        <div class="grid grid-cols-2 gap-4 text-center">
+            <div class="bg-pink-50 rounded-2xl py-3">
+                <p class="text-[10px] text-gray-500 uppercase">本月總將數</p>
+                <p id="monthTotalGames" class="text-2xl font-black text-pink-600">0</p>
+            </div>
+            <div class="bg-gray-50 rounded-2xl py-3">
+                <p class="text-[10px] text-gray-500 uppercase">我的總輸贏</p>
+                <p id="monthMyProfit" class="text-2xl font-black">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日曆 -->
+    <div class="calendar-grid" id="calendar"></div>
+
+    <div class="stats-card">
+        <h3 class="font-bold border-b mb-3 pb-2">🧧 本月好友戰績</h3>
+        <div id="friendsStats" class="text-sm space-y-2"></div>
+    </div>
+
+    <div class="text-center mt-10 pb-10">
+        <p class="text-[10px] text-gray-400">資料已儲存於瀏覽器暫存</p>
+        <button onclick="exportData()" class="text-[10px] text-pink-300 underline mt-2">下載備份檔案</button>
+    </div>
+</div>
+
+<div id="editModal" class="modal" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h2 id="modalDateLabel" class="font-bold text-xl mb-6 text-center text-pink-600">日期</h2>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-bold mb-3">今日將數：</label>
+            <div class="flex items-center gap-8 justify-center bg-pink-50 p-5 rounded-3xl">
+                <button class="btn-circle" onclick="adjustGames(-1)">-</button>
+                <span id="editGames" class="text-3xl font-black text-pink-600">0</span>
+                <button class="btn-circle" onclick="adjustGames(1)">+</button>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-bold mb-3">參與牌咖：</label>
+            <div id="playerSelector" class="flex flex-wrap justify-center gap-1"></div>
+        </div>
+
+        <div id="profitInputs" class="space-y-2 mb-6"></div>
+
+        <div class="bg-gray-50 p-5 rounded-2xl">
+            <div class="flex justify-between text-xs mb-1 text-gray-500">
+                <span>台費 (將 × 200):</span>
+                <span id="calcTableFee">0</span>
+            </div>
+            <div class="flex justify-between font-bold text-lg">
+                <span>平帳校驗:</span>
+                <span id="calcBalance">0</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mt-8">
+            <button onclick="closeModal()" class="py-4 bg-gray-100 rounded-full font-bold text-gray-500">取消</button>
+            <button onclick="saveRecord()" class="py-4 bg-pink-500 text-white rounded-full font-bold shadow-lg">儲存</button>
+        </div>
+        <button onclick="deleteRecord()" class="w-full mt-8 text-xs text-red-300">❌ 刪除本日紀錄</button>
+    </div>
+</div>
+
+<div id="toast" class="toast">已儲存</div>
+
+<script>
+    const STORAGE_KEY = 'mahjong_records_v1_2026';
+    const PLAYERS = ["我", "菜菜", "美琪", "柚柚", "亮亮", "Willy", "小比", "宗穎", "蘊蘊", "其他"];
+    
+    let currentYear = 2026;
+    let currentMonth = new Date().getMonth(); 
+    let records = {};
+    let editingDate = '';
+    let tempRecord = {};
+    let playerSigns = {}; 
+
+    function init() {
+        loadData();
+        renderCalendar();
+        renderPlayerSelector();
+    }
+
+    function loadData() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            records = saved ? JSON.parse(saved) : {};
+        } catch (e) { records = {}; }
+    }
+
+    function renderCalendar() {
+        const calendar = document.getElementById('calendar');
+        calendar.innerHTML = '';
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        document.getElementById('currentMonthLabel').innerText = `${currentYear}年 ${currentMonth + 1}月`;
+
+        for (let i = 0; i < firstDay; i++) calendar.appendChild(document.createElement('div'));
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const record = records[dateStr];
+            let bgClass = '', valDisplay = '';
+
+            if (record) {
+                const myP = record.profits["我"] || 0;
+                if (record.players.includes("我")) {
+                    bgClass = (myP > 0) ? 'bg-win' : (myP < 0 ? 'bg-loss' : 'bg-no-play');
+                    valDisplay = myP > 0 ? `+${myP}` : (myP === 0 ? '±0' : myP);
+                } else if (record.games > 0) {
+                    bgClass = 'bg-no-play';
+                    valDisplay = '有局';
+                }
+            }
+
+            const el = document.createElement('div');
+            el.className = `calendar-day ${bgClass}`;
+            el.innerHTML = `<span class="day-label">${day}</span><span class="day-val">${valDisplay}</span>`;
+            el.onclick = () => openModal(dateStr);
+            calendar.appendChild(el);
+        }
+        updateMonthlyStats();
+    }
+
+    function updateMonthlyStats() {
+        let monthGames = 0, myProfit = 0, fTotal = {};
+        PLAYERS.forEach(p => fTotal[p] = 0);
+
+        Object.keys(records).forEach(date => {
+            const d = new Date(date);
+            if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+                const rec = records[date];
+                monthGames += (rec.games || 0);
+                Object.keys(rec.profits).forEach(p => {
+                    const val = parseInt(rec.profits[p]) || 0;
+                    fTotal[p] = (fTotal[p] || 0) + val;
+                    if (p === "我") myProfit += val;
+                });
+            }
+        });
+
+        document.getElementById('monthTotalGames').innerText = monthGames;
+        const myP_el = document.getElementById('monthMyProfit');
+        myP_el.innerText = (myProfit > 0 ? '+' : '') + myProfit;
+        myP_el.style.color = myProfit > 0 ? '#d81b60' : (myProfit < 0 ? '#9e9e9e' : '#5d4037');
+
+        const friendsDiv = document.getElementById('friendsStats');
+        const sortedPlayers = PLAYERS.filter(p => p !== "我").sort((a,b) => Math.abs(fTotal[b]) - Math.abs(fTotal[a]));
+        
+        friendsDiv.innerHTML = sortedPlayers.map(p => `
+            <div class="flex justify-between items-center py-1 border-b border-pink-50 last:border-0">
+                <span class="text-gray-600">${p}</span>
+                <span class="font-bold ${fTotal[p]>0?'text-pink-500':(fTotal[p]<0?'text-gray-400':'text-gray-200')}">
+                    ${fTotal[p]>0?'+':''}${fTotal[p]}
+                </span>
+            </div>
+        `).join('');
+    }
+
+    function renderPlayerSelector() {
+        const container = document.getElementById('playerSelector');
+        container.innerHTML = PLAYERS.map(p => `
+            <span class="player-chip" id="chip-${p}" onclick="togglePlayer('${p}')">${p}</span>
+        `).join('');
+    }
+
+    window.openModal = (date) => {
+        editingDate = date;
+        document.getElementById('modalDateLabel').innerText = date;
+        const record = records[date] || { games: 0, players: [], profits: {} };
+        tempRecord = JSON.parse(JSON.stringify(record));
+        
+        PLAYERS.forEach(p => {
+            const val = tempRecord.profits[p] || 0;
+            playerSigns[p] = val < 0 ? -1 : 1;
+        });
+
+        updateModalUI();
+        document.getElementById('editModal').style.display = 'flex';
+    };
+
+    function updateModalUI() {
+        document.getElementById('editGames').innerText = tempRecord.games;
+        PLAYERS.forEach(p => {
+            const chip = document.getElementById(`chip-${p}`);
+            tempRecord.players.includes(p) ? chip.classList.add('selected') : chip.classList.remove('selected');
+        });
+
+        const inputs = document.getElementById('profitInputs');
+        inputs.innerHTML = tempRecord.players.map(p => {
+            const absVal = Math.abs(tempRecord.profits[p] || 0);
+            const isNeg = playerSigns[p] === -1;
+            return `
+            <div class="input-group">
+                <span class="font-bold text-pink-700">${p}</span>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSign('${p}')" class="toggle-sign-btn ${isNeg?'sign-minus':'sign-plus'}">
+                        ${isNeg?'輸 -':'贏 +'}
+                    </button>
+                    <input type="number" value="${absVal||''}" placeholder="0" 
+                        oninput="updateProfit('${p}', this.value)" onfocus="this.select()"
+                        class="w-20 p-2 border-0 bg-white rounded-lg text-center font-bold" inputmode="numeric">
+                </div>
+            </div>`;
+        }).join('');
+        calculateBalance();
+    }
+
+    window.toggleSign = (p) => {
+        playerSigns[p] = playerSigns[p] === 1 ? -1 : 1;
+        tempRecord.profits[p] = Math.abs(tempRecord.profits[p] || 0) * playerSigns[p];
+        updateModalUI();
+    };
+
+    window.togglePlayer = (p) => {
+        if (tempRecord.players.includes(p)) {
+            tempRecord.players = tempRecord.players.filter(x => x !== p);
+            delete tempRecord.profits[p];
+        } else {
+            tempRecord.players.push(p);
+            tempRecord.profits[p] = 0;
+            playerSigns[p] = -1;
+        }
+        updateModalUI();
+    };
+
+    window.updateProfit = (p, v) => {
+        tempRecord.profits[p] = (parseInt(v) || 0) * playerSigns[p];
+        calculateBalance();
+    };
+
+    window.adjustGames = (d) => {
+        tempRecord.games = Math.max(0, tempRecord.games + d);
+        document.getElementById('editGames').innerText = tempRecord.games;
+        calculateBalance();
+    };
+
+    function calculateBalance() {
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
