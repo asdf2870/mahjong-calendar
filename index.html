@@ -215,7 +215,7 @@
     <div class="header">
         <h1>仙女家麻將室</h1>
         <p class="text-sm opacity-60">2026 雲端即時同步中</p>
-        <div id="connectionStatus" class="sync-status">📡 正在連線雲端...</div>
+        <div id="connectionStatus" class="sync-status">📡 正在初始化連線...</div>
     </div>
 
     <div class="stats-card">
@@ -247,7 +247,7 @@
     </div>
 
     <div class="flex flex-col items-center gap-2 mt-10">
-        <p class="text-center text-xs text-gray-400">登入 ID: <span id="userIdDisplay">載入中...</span></p>
+        <p class="text-center text-xs text-gray-400">登入 ID: <span id="userIdDisplay">連線中...</span></p>
         <button onclick="exportData()" class="text-[10px] text-pink-300 underline">備份數據 (JSON)</button>
     </div>
 </div>
@@ -310,13 +310,16 @@
     let customPlayers = [];
     let records = {};
     let currentYear = 2026;
-    let currentMonth = 0; 
+    let currentMonth = new Date().getMonth(); 
     let editingDate = '';
     let tempRecord = {};
     let playerSigns = {};
 
+    // 嚴謹的初始化驗證邏輯
     async function initAuth() {
+        const statusEl = document.getElementById('connectionStatus');
         try {
+            statusEl.innerText = "🔑 正在驗證身份...";
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
@@ -324,7 +327,9 @@
             }
         } catch (error) {
             console.error("Auth Error:", error);
-            document.getElementById('connectionStatus').innerText = "❌ 連線失敗";
+            statusEl.innerText = "⚠️ 驗證失敗，嘗試重新連線...";
+            // 失敗後重試匿名登入
+            setTimeout(() => signInAnonymously(auth), 2000);
         }
     }
 
@@ -334,12 +339,16 @@
             document.getElementById('userIdDisplay').innerText = user.uid;
             document.getElementById('connectionStatus').innerText = "✅ 雲端同步中";
             startSync();
+        } else {
+            document.getElementById('userIdDisplay').innerText = "未登入";
+            document.getElementById('connectionStatus').innerText = "❌ 尚未連線";
         }
     });
 
     function startSync() {
         if (!user) return;
 
+        // 監聽紀錄
         const recordsCol = collection(db, 'artifacts', appId, 'public', 'data', 'records');
         onSnapshot(recordsCol, (snapshot) => {
             records = {};
@@ -347,9 +356,12 @@
                 records[doc.id] = doc.data();
             });
             renderCalendar();
-        }, (err) => console.error("Records Sync Error:", err));
+        }, (err) => {
+            console.error("Records Sync Error:", err);
+            document.getElementById('connectionStatus').innerText = "❌ 同步錯誤";
+        });
 
-        // 修正路徑：將 settings 改為 settings/global 以確保路徑為偶數個片段
+        // 監聽設定 (牌咖清單)
         const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
         onSnapshot(settingsDoc, (snapshot) => {
             if (snapshot.exists()) {
@@ -547,7 +559,7 @@
     }
 
     window.saveRecord = async () => {
-        if (!user) return;
+        if (!user) return alert("連線尚未準備好，請稍候");
         const tableFee = tempRecord.games * 200;
         const totalProfit = Object.values(tempRecord.profits).reduce((a, b) => a + b, 0);
         if (tableFee + totalProfit !== 0 && tempRecord.games > 0) {
@@ -587,7 +599,6 @@
             const trimmedName = name.trim();
             if (getAllPlayers().includes(trimmedName)) return alert("名字已存在");
             customPlayers.push(trimmedName);
-            // 修正路徑：確保為偶數片段
             const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
             await setDoc(settingsDoc, { customPlayers }, { merge: true });
             updateModalUI();
@@ -610,6 +621,7 @@
         a.click();
     };
 
+    // 啟動身份驗證
     initAuth();
 </script>
 </body>
